@@ -1,0 +1,16 @@
+Package: rprofiler
+Title: R profile generator
+Version: 1.0.0
+Date: 2020-2-3
+License: GPL-3
+Depends:
+    R (>= 3.1.2),
+Imports:
+Suggests:
+Remotes:
+    r-lib/covr
+LinkingTo:
+Author: Karl Kumbier
+Description: Generates KS profiles from image features 
+Maintainer: Karl Kumbier <kkumbier@berkeley.edu>
+RoxygenNote: 7.0.0
