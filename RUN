@@ -1,0 +1,30 @@
+# This script generates profiles for a plate/collection of plates. Below is an
+# example use case to generate profiles for the plate contained in ./data.
+#
+# Multiple plates can be specified by separating arguments to PLATE_ID with 
+#   ',' (no spaces).
+# Each plate must have a corresponding metadata file specified as arguments to
+#   META_FILE, also separated with ',' (no spaces)
+# Reference populations for KS statistic can be specified as cell lines
+#   separated with ',' (no spaces) using CONTROL_CL, as compounds separated with
+#   ',' (no spaces) using CONTROL_CPD, or as usage (i.e. positive_ctrl)
+#   separated with ',' (no spaces) using CONTROL_USG.
+# Specifying WRITE_PATH will aggregate KS profiles from all plates and write to
+#   the indicated path as a csv.
+META_FILE='./data/metadata/2020019002.xlsx'
+PLATE_DIR='./data/plates/'
+PLATE_ID='MAR_20200115_DensityDilutions_plate_2020019002'
+CONTROL_CL='ALS15,ALS24,ALS45'
+N_CORE=12
+TYPE='cbfeature'
+SCRIPT_PATH='./main.R'
+WRITE_PATH='./data/aggregate_profiles/profiles.csv'
+
+Rscript $SCRIPT_PATH \
+  --META_FILE="$META_FILE" \
+  --PLATE_DIR="$PLATE_DIR" \
+  --PLATE_ID="$PLATE_ID" \
+  --CONTROL_CL="$CONTROL_CL" \
+  --TYPE="$TYPE" \
+  --N_CORE="$N_CORE" \
+  --WRITE_PATH="$WRITE_PATH"

@@ -29,8 +29,8 @@ generateProfile <- function(plate, xmeta, plate.dir,
                             control.cl=NULL,
                             control.cpd=NULL,
                             control.usg=NULL,
-                            n.core=1, 
-                            type='cbfeature') {
+                            type='cbfeature',
+                            n.core=1) {
   
   # Check for valid input
   if (is.null(c(control.cl, control.cpd, control.usg)))
@@ -42,7 +42,7 @@ generateProfile <- function(plate, xmeta, plate.dir,
   xmeta <- filter(xmeta, PlateID == plate)
 
   # Load in data for controls to generate KS reference distribution 
-  xcontrol <- loadControl(xmeta, plate.dir, type, 
+  xcontrol <- loadControl(xmeta, plate.dir, type, n.core,
                           control.cl, control.cpd, control.usg)
   
   # Set path to write each cell/compound combination
@@ -59,7 +59,6 @@ generateProfile <- function(plate, xmeta, plate.dir,
    
       # Generate KS statistics, dropping na values 
       out.raw <- lapply(xtreat, wellKS, xcontrol=xcontrol)
-      out.raw <- cleanListNA(out.raw)
 
       # Format data for return with well and plate ids
       out <- rbindlist(out.raw)
@@ -77,16 +76,15 @@ generateProfile <- function(plate, xmeta, plate.dir,
     })
   }, mc.cores=n.core)
   
-  save(file='~/test.Rdata', out)
   out <- rbindlist(cleanListNull(out))
   write.csv(file=str_c(write.path, 'profiles.csv'), out, 
             row.names=FALSE, quote=FALSE)
 }
 
-#' Load control data
-#' @export
+
 loadControl <- function(xmeta, plate.dir,
-                        type='cbfeature', 
+                        type='cbfeature',
+                        n.core=1, 
                         control.cl=NULL,
                         control.cpd=NULL,
                         control.usg=NULL) {
@@ -111,14 +109,12 @@ loadControl <- function(xmeta, plate.dir,
   }
 
   # Load in selected wells and format for return
-  wells <- loadWells(xmeta, plate.dir, type)
+  wells <- loadWells(xmeta, plate.dir, type, n.core)
   wells <- unlist(wells, recursive=FALSE)
   wells <- do.call(rbind, wells)
   return(wells)
 }
 
-#' Load treatment data
-#' @export
 loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature') {
   # Load in raw image features for specified well on given plate
 
@@ -136,7 +132,7 @@ loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature') {
 }
 
 
-loadWells <- function(xmeta, plate.dir, type='cbfeature') {
+loadWells <- function(xmeta, plate.dir, type='cbfeature', n.core=1) {
   # Wrapper function to load data from multiple wells based on filtered metadata
 
   # Check that metadata has been filtered to specific plate
@@ -152,7 +148,10 @@ loadWells <- function(xmeta, plate.dir, type='cbfeature') {
     ext <- '.mat'
     well.id <- str_c(xmeta$RowID, xmeta$ColID, sep='-')
     well.files <- str_c('cbfeatures-', well.id, ext)
-    wells <- lapply(well.files, loadWellMat, feature.dir=feature.dir)
+    
+    wells <- mclapply(well.files, loadWellMat, 
+                      feature.dir=feature.dir, 
+                      mc.cores=n.core)
     wels <- cleanListNull(wells)
   } else {
     #TODO: check operetta formatting
@@ -199,9 +198,7 @@ wellKS <- function(xwell, xcontrol, id.feat=NULL) {
   # Generate KS statistics for indicated features.
 
   if (is.null(id.feat)) id.feat <- 1:ncol(xcontrol)
-  suppressWarnings(
-    out <- sapply(id.feat, function(i) signedKS(xwell[,i], xcontrol[,i]))
-  )
+  out <- sapply(id.feat, function(i) signedKS(xwell[,i], xcontrol[,i]))
 
   n <- nrow(xwell)
   out <- data.frame(matrix(out, nrow=1)) %>% mutate(NCells=n)
@@ -220,10 +217,7 @@ signedKS <- function(x, y, min.n=5) {
     return(NA)
   }
 
-  ks1 <- ks.test(x, y, alternative='greater')$statistic
-  ks2 <- ks.test(x, y, alternative='less')$statistic
-  ks.sign <- ifelse(ks1 > ks2, 1, -1)
-  ks <- unname(max(ks1, ks2) * ks.sign)
+  ks <- ksTest(x, y)
   return(ks)
 }
 
