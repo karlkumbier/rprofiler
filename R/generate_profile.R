@@ -25,16 +25,11 @@
 #' @importFrom dplyr filter mutate
 #' @importFrom parallel mclapply
 #' @importFrom R.matlab readMat
-generateProfile <- function(plate, xmeta, plate.dir,
-                            control.cl=NULL,
-                            control.cpd=NULL,
-                            control.usg=NULL,
+generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
                             type='cbfeature',
                             n.core=1) {
   
   # Check for valid input
-  if (is.null(c(control.cl, control.cpd, control.usg)))
-    stop('Specifiy a reference population -- cell line(s), compound(s), or usage')
   if (!type %in% c('cbfeature', 'operetta'))
     stop('type must be one of cbfeature or operetta')
 
@@ -42,8 +37,8 @@ generateProfile <- function(plate, xmeta, plate.dir,
   xmeta <- filter(xmeta, PlateID == plate)
 
   # Load in data for controls to generate KS reference distribution 
-  xcontrol <- loadControl(xmeta, plate.dir, type, n.core,
-                          control.cl, control.cpd, control.usg)
+  xcontrol <- loadControl(xmeta, plate.dir, control.variable, 
+                          controls, type, n.core)
   
   # Set path to write each cell/compound combination
   write.path <- str_c(plate.dir, '/', plate, '/ks_profiles/')
@@ -82,31 +77,18 @@ generateProfile <- function(plate, xmeta, plate.dir,
 }
 
 
-loadControl <- function(xmeta, plate.dir,
+loadControl <- function(xmeta, plate.dir, control.variable, controls,
                         type='cbfeature',
-                        n.core=1, 
-                        control.cl=NULL,
-                        control.cpd=NULL,
-                        control.usg=NULL) {
+                        n.core=1) { 
   # Load in image features for specified control wells 
 
   # Filter metadata to control cell lines
-  if (!is.null(control.cl)) {
-    xmeta <- filter(xmeta, CellLine %in% control.cl)
-    if (!is.null(c(control.cpd, control.usg)))
-      warning('Multiple control types specified, using cell line')
-
-  } else if (!is.null(control.cpd)) {
-    xmeta <- filter(xmeta, Compound %in% control.cpd)
-    if (!is.null(c(control.cpd, control.usg)))
-      warning('Multiple control types specified, using cell line')
-  
-  } else if (!is.null(control.usg)) {
-    xmeta <- filter(xmeta, Usage %in% control.usg) 
-
-  } else {
-    stop('Specifiy control cell line, compound, or usage')
+  if (!control.variable %in% colnames(xmeta)) {
+    stop('Control variable not in metadata')
   }
+
+  id.keep <- xmeta[[control.variable]] %in% controls
+  xmeta <- xmeta[id.keep,]
 
   # Load in selected wells and format for return
   wells <- loadWells(xmeta, plate.dir, type, n.core)
@@ -212,10 +194,10 @@ signedKS <- function(x, y, min.n=5) {
   x <- c(na.omit(x))
   y <- c(na.omit(y))
 
-  if (length(x) < min.n | length(y) < min.n) {
-    warning('Fewer than min.n cells in well, skipping...')  
-    return(NA)
-  }
+  #if (length(x) < min.n | length(y) < min.n) {
+  #  warning('Fewer than min.n cells in well, skipping...')  
+  #  return(NA)
+  #}
 
   ks <- ksTest(x, y)
   return(ks)

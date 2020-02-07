@@ -1,4 +1,4 @@
-# This script generates profiles for a plate/collection of plates. Below is an
+#This script generates profiles for a plate/collection of plates. Below is an
 # example use case to generate profiles for the plate contained in ./data.
 #
 # Multiple plates can be specified by separating arguments to PLATE_ID with 
@@ -11,10 +11,11 @@
 #   separated with ',' (no spaces) using CONTROL_USG.
 # Specifying WRITE_PATH will aggregate KS profiles from all plates and write to
 #   the indicated path as a csv.
-META_FILE='./data/metadata/2020019002.xlsx'
+META_FILE='./data/metadata/2019018117.xlsx'
 PLATE_DIR='./data/plates/'
-PLATE_ID='MAR_20200115_DensityDilutions_plate_2020019002'
-CONTROL_CL='ALS15,ALS24,ALS45'
+PLATE_ID='LH_2019018117'
+CONTROLS='DMSO'
+CONTROL_VARIABLE='Compound_ID'
 N_CORE=12
 TYPE='cbfeature'
 SCRIPT_PATH='./main.R'
@@ -24,7 +25,8 @@ Rscript $SCRIPT_PATH \
   --META_FILE="$META_FILE" \
   --PLATE_DIR="$PLATE_DIR" \
   --PLATE_ID="$PLATE_ID" \
-  --CONTROL_CL="$CONTROL_CL" \
+  --CONTROLS="$CONTROLS" \
+  --CONTROL_VARIABLE="$CONTROL_VARIABLE" \
   --TYPE="$TYPE" \
   --N_CORE="$N_CORE" \
   --WRITE_PATH="$WRITE_PATH"

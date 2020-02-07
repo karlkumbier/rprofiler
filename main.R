@@ -10,21 +10,13 @@ plate.dir <- args$PLATE_DIR
 plate.ids <- str_split(args$PLATE_ID, ',')[[1]]
 write.path <- args$WRITE_PATH
 
-if (!is.null(args$CONTROL_CL)) {
-  control.cl <- str_split(args$CONTROL_CL, ',')[[1]]
-  control.cpd <- NULL
-  control.usg <- NULL
-} else if (!is.null(args$CONTROL_CPD)) {
-  control.cpd <- str_split(args$CONTROL_CPD, ',')[[1]]
-  control.cl <- NULL
-  control.usg <- NULL
-} else if (!is.null(args$CONTROL_USG)) {
-  control.usg <- str_split(args$CONTROL_USG, ',')[[1]]
-  control.cl <- NULL
-  control.cpd <- NULL
-} else {
-  stop('Specify reference population for KS statistic')
-}
+if (is.null(args$CONTROLS))
+  stop('Specify KS controls')
+if (is.null(args$CONTROL_VARIABLE))
+  stop('Specify a variable to use for KS controls')
+
+controls <- str_split(args$CONTROLS, ',')[[1]]
+control.variable <- str_split(args$CONTROL_VARIABLE, ',')[[1]]
 
 n.core <- as.numeric(args$N_CORE)
 type <-  args$TYPE
@@ -57,27 +49,15 @@ for (i in 1:length(plate.ids)) {
     mutate(ID=str_c(PlateID, '_', WellID))
 
   # Clean marker set names for output csv
-  xmeta$Markers <- str_remove_all(xmeta$Markers, '\\((.+?)\\)')
-  xmeta$Markers <- str_replace_all(xmeta$Markers, '/', '-')
   meta.output <- str_c(plate.dir, '/', plate.ids[i], '/metadata.csv')
   write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
-
-  # Check that reference distribution metadata exists
-  if (!is.null(control.cl) & is.null(xmeta$CellLine)) {
-    stop('Cell line data not available for control')
-  } else if (!is.null(control.cpd) & is.null(xmeta$Compound)) {
-    stop('Compound data not available for control') 
-  } else if (!is.null(control.usg) & is.null(xmeta$Usage)) {
-    stop('Usage data not available for control')
-  }
 
   # Generate KS profiles for plate
   generateProfile(plate.ids[i], 
                   xmeta=xmeta, 
                   plate.dir=plate.dir, 
-                  control.cl=control.cl,
-                  control.cpd=control.cpd,
-                  control.usg=control.usg,
+                  controls=controls,
+                  control.variable=control.variable,
                   n.core=n.core,
                   type=type)
 }

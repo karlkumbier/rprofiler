@@ -23,18 +23,24 @@ loadMeta <- function(meta.file) {
   }
 
   # Read in info sheet to determine meta data pages
-  # TODO: remove hard coding for excel file info
   workbook.info <- read_excel(meta.file, col_names=FALSE, skip=8, n_max=2)
   sheets <- unname(unlist(workbook.info[1, -1]))
+  if (!'UsedWells' %in% sheets) stop('Specify UsedWells')
   markers <- str_split(unlist(workbook.info[2, 2]), ', ')[[1]]
 
   # Read sheets of plate metadata
-  workbook <- lapply(sheets, read_excel, path=meta.file)
+  workbook <- lapply(sheets, read_excel, path=meta.file, 
+                     trim_ws=TRUE, range='B1:Y17')
+
+  # Drop empty sheets
+  id.drop <- sapply(workbook, function(z) mean(is.na(z)) == 1)
+  workbook <- workbook[!id.drop]
+  sheets <- sheets[!id.drop]
 
   # Extract metadata from each sheet
-  # TODO: add checks for empty rows
-  n.row <- sum(!is.na(workbook[[1]][,1]))
-  n.col <- sum(!is.na(workbook[[1]][1,])) - 1
+  id.used <- which(sheets == 'UsedWells')
+  n.row <- sum(rowMeans(is.na(workbook[[id.used]])) != 1)
+  n.col <- sum(colMeans(is.na(workbook[[id.used]])) != 1)
   xmeta <- sapply(workbook, wellMeta)
   col.id <- rep(1:n.col, each=n.row)
   row.id <- rep(1:n.row, times=n.col)
@@ -45,18 +51,25 @@ loadMeta <- function(meta.file) {
     mutate(RowID=row.id, ColID=col.id, WellID=str_c(row.id, '-', col.id)) %>%
     mutate(UsedWells=str_remove_all(UsedWells, '(^\ |\ $)')) %>%
     filter(UsedWells == 1) %>%
-    mutate(Markers=str_c(markers, collapse='_')) %>%
     mutate_if(is.character, str_replace_all, pattern=',', replacement='\\.')
+  
+  if (!is.na(markers)) {
+    xmeta <- mutate(xmeta, Markers=str_c(markers, collapse='_')) %>%
+      mutate(Markers=str_remove_all(Markers, '\\((.+?)\\)')) %>%
+      mutate(Markers=str_replace_all(Markers, '/', '-'))
+  }
+
   return(xmeta)
 }
 
 wellMeta <- function(x) {
   # Extract well-specific metadata from excel sheet
-  id.drop <- is.na(x[,1])
-  x <- as.matrix(x)[1:nrow(x), 2:ncol(x)]
-  x <- x[!id.drop,]
+  #id.drop <- is.na(x[,1])
+  #x <- as.matrix(x)[1:nrow(x), 2:ncol(x)]
+  #x <- x[!id.drop,]
   rownames(x) <-  NULL
   colnames(x) <-  NULL
-  return(c(x))
+  return(c(as.matrix(x)))
 }
+
 
