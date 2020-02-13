@@ -47,7 +47,6 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
 
   # Load in each well of plate
   out <- mclapply(well.ids, function(w) {
-    cat(str_c('PROCCESSING WELL ', w, '...\n'))
    
     tryCatch({    
       xtreat <- loadTreatment(xmeta, plate.dir, w, type)
@@ -62,7 +61,6 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       out <- data.frame(ID=id, PlateID=plate, out)
       
       # Write to file for cell line/ compound combination
-      cat('DONE!!!\n')
       return(out)
     
     }, error=function(e) {
@@ -72,7 +70,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   }, mc.cores=n.core)
   
   out <- rbindlist(cleanListNull(out))
-  write.csv(file=str_c(write.path, 'profiles.csv'), out, 
+  write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
             row.names=FALSE, quote=FALSE)
 }
 
@@ -83,12 +81,14 @@ loadControl <- function(xmeta, plate.dir, control.variable, controls,
   # Load in image features for specified control wells 
 
   # Filter metadata to control cell lines
-  if (!control.variable %in% colnames(xmeta)) {
+  if (!all(unlist(control.variable) %in% colnames(xmeta))) {
     stop('Control variable not in metadata')
   }
 
-  id.keep <- xmeta[[control.variable]] %in% controls
-  xmeta <- xmeta[id.keep,]
+  for (i in 1:length(control.variable)) {
+    id.keep <- xmeta[[control.variable[[i]]]] %in% controls[[i]]
+    xmeta <- xmeta[id.keep,]
+  }
 
   # Load in selected wells and format for return
   wells <- loadWells(xmeta, plate.dir, type, n.core)
@@ -149,7 +149,6 @@ loadWellMat <- function(feature.dir, well.file) {
   
   tryCatch({  
     # Load in feature matrix for an individual well
-    cat(str_c('Loading well ', well.file, '...\n'))
     well.id <- str_remove_all(well.file, '(cbfeatures-|\\.mat)')
     xmat <- readMat(str_c(feature.dir, '/', well.file))
     x <- xmat$features['data',,][[1]]

@@ -53,7 +53,7 @@ loadMeta <- function(meta.file) {
     filter(UsedWells == 1) %>%
     mutate_if(is.character, str_replace_all, pattern=',', replacement='\\.')
   
-  if (!is.na(markers)) {
+  if (!all(is.na(markers))) {
     xmeta <- mutate(xmeta, Markers=str_c(markers, collapse='_')) %>%
       mutate(Markers=str_remove_all(Markers, '\\((.+?)\\)')) %>%
       mutate(Markers=str_replace_all(Markers, '/', '-'))
