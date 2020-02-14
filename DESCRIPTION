@@ -6,6 +6,12 @@ License: GPL-3
 Depends:
     R (>= 3.1.2),
 Imports:
+    R.matlab,
+    data.table,
+    dplyr,
+    parallel,
+    readxl,
+    stringr
 Suggests:
 Remotes:
     r-lib/covr
