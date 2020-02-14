@@ -1,22 +1,46 @@
 library(rprofiler)
 library(stringr)
 library(dplyr)
+library(data.table)
 options(stringsAsFactors=FALSE)
 args <- R.utils::commandArgs(asValues=TRUE)
 
 # Set paths for project, platesmetadata, code, and output
-meta.files <- str_split(args$META_FILE, ',')[[1]]
+meta.dir <- args$META_DIR
 plate.dir <- args$PLATE_DIR
-plate.ids <- str_split(args$PLATE_ID, ',')[[1]]
+
+plate.ids <- args$PLATE_ID
+if (str_detect(plate.ids, 'csv')) {
+  plate.ids <- as.character(fread(plate.ids, header=FALSE)$V1)
+} else {
+  plate.ids <- str_split(plate.ids, ',')[[1]]
+}
+
 write.path <- args$WRITE_PATH
 
+# Check that plate IDs exist in plate dir and are unique
+plates <- list.files(plate.dir)
+if (length(plates) == 0) {
+  stop('No plates found in plate directory')
+}
+
+counts <- colSums(sapply(plate.ids, str_detect, string=plates))
+if (any(counts > 1) | any(counts == 0)) {
+  warning('Missing or non-unique plate ids. Subsetting to unique plates')
+  plate.ids <- plate.ids[counts == 1]
+}
+
+# Format controls for profile generation
 if (is.null(args$CONTROLS))
   stop('Specify KS controls')
 if (is.null(args$CONTROL_VARIABLE))
   stop('Specify a variable to use for KS controls')
 
-controls <- str_split(args$CONTROLS, ',')[[1]]
-control.variable <- str_split(args$CONTROL_VARIABLE, ',')[[1]]
+controls <- str_split(args$CONTROLS, '\\|')[[1]]
+controls <- str_split(controls, ',')
+
+control.variable <- str_split(args$CONTROL_VARIABLE, '\\|')[[1]]
+control.variable <- str_split(control.variable, ',')
 
 n.core <- as.numeric(args$N_CORE)
 type <-  args$TYPE
@@ -26,11 +50,8 @@ if (is.null(n.core)) n.core <- 1
 if (is.null(plate.ids))
   stop('Specify plate')
 
-if (is.null(meta.files))
-  stop('Specify metadata file')
-
-if (length(plate.ids) != length(meta.files))
-  stop('Specify metadata file for each plate')
+if (is.null(meta.dir))
+  stop('Specify metadata directory')
 
 if (is.null(plate.dir))
   stop('Specify plate directory')
@@ -41,19 +62,24 @@ if (is.null(type))
 ###############################################################################
 # Iterate over all plates, generating metadata files and profiles
 ###############################################################################
+meta.files <- str_c(meta.dir, '/', plate.ids, '.xlsx')
 for (i in 1:length(plate.ids)) {
-  
+
+  plate <- plates[str_detect(plates, plate.ids[i])]
+
+  print(str_c('Processing plate: ', plate.ids[i]))
   # Load in metadata for each plate
   xmeta <- loadMeta(meta.files[i]) %>% 
-    mutate(PlateID=plate.ids[i]) %>%
+    mutate(PlateID=plate) %>%
     mutate(ID=str_c(PlateID, '_', WellID))
 
   # Clean marker set names for output csv
-  meta.output <- str_c(plate.dir, '/', plate.ids[i], '/metadata.csv')
+  plate <- plates[str_detect(plates, plate.ids[i])]
+  meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
   write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
 
   # Generate KS profiles for plate
-  generateProfile(plate.ids[i], 
+  generateProfile(plate, 
                   xmeta=xmeta, 
                   plate.dir=plate.dir, 
                   controls=controls,
