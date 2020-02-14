@@ -16,7 +16,7 @@ if (str_detect(plate.ids, 'csv')) {
   plate.ids <- str_split(plate.ids, ',')[[1]]
 }
 
-write.path <- args$WRITE_PATH
+write.dir <- args$WRITE_PATH
 
 # Check that plate IDs exist in plate dir and are unique
 plates <- list.files(plate.dir)
@@ -89,5 +89,8 @@ for (i in 1:length(plate.ids)) {
 }
 
 # Aggregate profiles if processing multiple plates
-if (!is.null(write.path)) aggregate_profiles(plate.ids, plate.dir, write.path)
+if (!is.null(write.dir)) {
+  aggregate_profiles(plate.ids, plate.dir, write.dir, type)
+}
+
 print('PROFILES DONE!!!')
