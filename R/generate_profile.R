@@ -22,8 +22,8 @@
 #'
 #' @importFrom data.table data.table rbindlist
 #' @importFrom stringr str_c str_remove_all
-#' @importFrom dplyr filter mutate
-#' @importFrom parallel mclapply
+#' @importFrom dplyr filter mutate select
+#' @importFrom parallel mclapply mcmapply
 #' @importFrom R.matlab readMat
 generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
                             type='cbfeature',
@@ -46,7 +46,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   well.ids <- unique(xmeta$WellID)
 
   # Load in each well of plate
-  out <- mclapply(well.ids, function(w) {
+  out <- lapply(well.ids, function(w) {
    
     tryCatch({    
       xtreat <- loadTreatment(xmeta, plate.dir, w, type)
@@ -67,7 +67,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       warning(str_c('Error processing well: ', w, '. Skipping well')) 
       return(NULL)
     })
-  }, mc.cores=n.core)
+  })
   
   out <- rbindlist(cleanListNull(out))
   write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
@@ -93,7 +93,7 @@ loadControl <- function(xmeta, plate.dir, control.variable, controls,
   # Load in selected wells and format for return
   wells <- loadWells(xmeta, plate.dir, type, n.core)
   wells <- unlist(wells, recursive=FALSE)
-  wells <- do.call(rbind, wells)
+  wells <- rbindlist(wells)
   return(wells)
 }
 
@@ -134,10 +134,24 @@ loadWells <- function(xmeta, plate.dir, type='cbfeature', n.core=1) {
     wells <- mclapply(well.files, loadWellMat, 
                       feature.dir=feature.dir, 
                       mc.cores=n.core)
-    wels <- cleanListNull(wells)
+    wells <- cleanListNull(wells)
   } else {
-    #TODO: check operetta formatting
-    ext <-  '.csv'
+    feature.dir <- str_c(plates, '/features/opfeatures/')
+    
+    input.file <- list.files(feature.dir)
+    input.file <- input.file[str_detect(input.file, 'Objects_Population')]
+    if (length(input.file) > 1) stop('Multiple feature files detected')
+    if (length(input.file) == 0) stop('No feature files detected')
+    
+    feature.id <- str_remove_all(input.file, 'Objects_Population - ') %>%
+      str_remove_all('\\..*')
+    
+    xop <- fread(str_c(feature.dir, input.file), skip='Row')
+    wells <- mcmapply(function(row, col) {
+                      loadWellOp(row, col, x=xop, feature.id=feature.id) 
+                      }, xmeta$RowID, xmeta$ColID, 
+                      mc.cores=n.core, SIMPLIFY=FALSE)
+    wells <- cleanListNull(wells)
   }
 
   return(wells)
@@ -160,7 +174,8 @@ loadWellMat <- function(feature.dir, well.file) {
     # Add channel id for unique feature name
     chan.id <- lapply(xmat$features['channel.id',,][[1]], unlist)
     chan.id <- sapply(chan.id, str_c, collapse='')
-    x.featnames[id.feat] <- str_c('X', x.featnames[id.feat], chan.id[id.feat], sep='..')
+    x.featnames[id.feat] <- str_c('X', x.featnames[id.feat], 
+                                  chan.id[id.feat], sep='..')
     colnames(x) <- x.featnames
     
     # Subset to feature data
@@ -168,16 +183,35 @@ loadWellMat <- function(feature.dir, well.file) {
     names(x) <- well.id
     return(x)
   }, error=function(e) {
-    warning(str_c('Error loading well: ', well.file, '. Well has beend dropped'))
+    warning(str_c('Error loading well: ', well.file, 
+                  '. Well has beend dropped'))
     return(NULL)
   })
 
+}
+
+loadWellOp <- function(x, row, col, feature.id) {
+  tryCatch({
+    xop <- filter(x, Row == row) %>%
+      filter(Column == col) %>%
+      select(contains(feature.id))
+
+    x <- list(xop)
+    names(x) <- str_c(row, '-', col)
+    return(x)
+  }, error=function(e) {
+    warning(str_c('Error loading well: ', row, '-', col, 
+                  '. Well has beend dropped'))
+    return(NULL)
+  })
 }
 
 
 wellKS <- function(xwell, xcontrol, id.feat=NULL) {
   # Generate KS statistics for indicated features.
 
+  xwell <- as.data.frame(xwell)
+  xcontrol <- as.data.frame(xcontrol)
   if (is.null(id.feat)) id.feat <- 1:ncol(xcontrol)
   out <- sapply(id.feat, function(i) signedKS(xwell[,i], xcontrol[,i]))
 

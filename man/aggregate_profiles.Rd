@@ -4,14 +4,14 @@
 \alias{aggregate_profiles}
 \title{Aggregate Profiles}
 \usage{
-aggregate_profiles(plates, plate.dir, write.path)
+aggregate_profiles(plate.ids, plate.dir, write.dir, type)
 }
 \arguments{
-\item{plates}{(character) identifiers of the plates whose ks profiles will be
-loaded and aggregated.}
-
 \item{plate.dir}{(character) path to plate directory, containing the plate
 directory with image features for the selected plate.}
+
+\item{plates}{(character) identifiers of the plates whose ks profiles will be
+loaded and aggregated.}
 
 \item{write.path}{(character) path to write aggregated ks profiles to.}
 }

@@ -28,7 +28,8 @@ aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
   meta.paths <- str_c(plate.dir, '/', plates.select, '/metadata.csv')
   
   id.exist.p <- sapply(profile.paths, file.exists)
-  id.exists.m <- sapply(meta.paths, file.exists)
+  id.exist.m <- sapply(meta.paths, file.exists)
+  id.exist <- id.exist.p & id.exist.m
   if (sum(!id.exist) > 0) {
     missing <- profile.paths[!id.exist]
     for (m in missing) {
@@ -45,7 +46,7 @@ aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
     profiles <- lapply(profile.paths, fread)
     profiles <- rbindlist(profiles, fill=TRUE)
 
-    meta <- lapply(meta.paths, fread)
+    meta <- lapply(meta.paths[id.exist], fread)
     meta <- rbindlist(meta, fill=TRUE)
     
     meta.path <- str_c(write.dir, '/metadata.csv')

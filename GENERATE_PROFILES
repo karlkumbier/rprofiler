@@ -11,22 +11,22 @@
 #   separated with ',' (no spaces) using CONTROL_USG.
 # Specifying WRITE_PATH will aggregate KS profiles from all plates and write to
 #   the indicated path as a csv.
-META_FILE='./data/metadata/2019018117.xlsx'
+META_DIR='./data/metadata/'
 PLATE_DIR='./data/plates/'
-PLATE_ID='LH_2019018117'
+PLATE_ID='2020018002'
 CONTROLS='DMSO'
 CONTROL_VARIABLE='Compound_ID'
 N_CORE=12
-TYPE='cbfeature'
+TYPE='operetta'
 SCRIPT_PATH='./main.R'
-WRITE_PATH='./data/aggregate_profiles/profiles.csv'
+WRITE_DIR='./data/plates/LH_2020018002/agg_profiles/'
 
 Rscript $SCRIPT_PATH \
-  --META_FILE="$META_FILE" \
+  --META_DIR="$META_DIR" \
   --PLATE_DIR="$PLATE_DIR" \
   --PLATE_ID="$PLATE_ID" \
   --CONTROLS="$CONTROLS" \
   --CONTROL_VARIABLE="$CONTROL_VARIABLE" \
   --TYPE="$TYPE" \
   --N_CORE="$N_CORE" \
-  --WRITE_PATH="$WRITE_PATH"
+  --WRITE_DIR="$WRITE_DIR"

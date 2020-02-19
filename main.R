@@ -16,7 +16,7 @@ if (str_detect(plate.ids, 'csv')) {
   plate.ids <- str_split(plate.ids, ',')[[1]]
 }
 
-write.dir <- args$WRITE_PATH
+write.dir <- args$WRITE_DIR
 
 # Check that plate IDs exist in plate dir and are unique
 plates <- list.files(plate.dir)
@@ -59,6 +59,7 @@ if (is.null(plate.dir))
 if (is.null(type))
   stop('Specify type of features (i.e. cbfeature or operetta)')
 
+
 ###############################################################################
 # Iterate over all plates, generating metadata files and profiles
 ###############################################################################
@@ -77,7 +78,7 @@ for (i in 1:length(plate.ids)) {
   plate <- plates[str_detect(plates, plate.ids[i])]
   meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
   write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
-
+  
   # Generate KS profiles for plate
   generateProfile(plate, 
                   xmeta=xmeta, 
