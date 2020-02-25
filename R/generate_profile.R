@@ -179,7 +179,8 @@ loadWellMat <- function(feature.dir, well.file) {
     colnames(x) <- x.featnames
     
     # Subset to feature data
-    x <- list(x[,id.feat])
+    x <- matrix(x[,id.feat], ncol=length(id.feat))
+    x <- list(data.table(x))
     names(x) <- well.id
     return(x)
   }, error=function(e) {
