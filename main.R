@@ -4,6 +4,7 @@ library(dplyr)
 library(data.table)
 options(stringsAsFactors=FALSE)
 args <- R.utils::commandArgs(asValues=TRUE)
+save(file='args.Rdata', args)
 
 # Set paths for project, platesmetadata, code, and output
 meta.dir <- args$META_DIR
@@ -65,7 +66,7 @@ if (is.null(type))
 ###############################################################################
 meta.files <- str_c(meta.dir, '/', plate.ids, '.xlsx')
 for (i in 1:length(plate.ids)) {
-
+  tryCatch({
   plate <- plates[str_detect(plates, plate.ids[i])]
 
   print(str_c('Processing plate: ', plate.ids[i]))
@@ -87,6 +88,10 @@ for (i in 1:length(plate.ids)) {
                   control.variable=control.variable,
                   n.core=n.core,
                   type=type)
+  }, error=function(e) {
+    print(str_c('Error processing plate ', plate.ids[i]))
+    print(e)
+  })
 }
 
 # Aggregate profiles if processing multiple plates

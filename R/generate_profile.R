@@ -176,10 +176,10 @@ loadWellMat <- function(feature.dir, well.file) {
     chan.id <- sapply(chan.id, str_c, collapse='')
     x.featnames[id.feat] <- str_c('X', x.featnames[id.feat], 
                                   chan.id[id.feat], sep='..')
-    colnames(x) <- x.featnames
     
     # Subset to feature data
-    x <- matrix(x[,id.feat], ncol=length(id.feat))
+    x <- matrix(x[,id.feat], ncol=length(id.feat)) 
+    colnames(x) <- x.featnames[id.feat]
     x <- list(data.table(x))
     names(x) <- well.id
     return(x)
