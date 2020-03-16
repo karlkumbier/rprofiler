@@ -27,6 +27,7 @@
 #' @importFrom R.matlab readMat
 generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
                             type='cbfeature',
+                            n.bs=0,
                             n.core=1) {
   
   # Check for valid input
@@ -49,15 +50,31 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   out <- lapply(well.ids, function(w) {
    
     tryCatch({    
+      # Load in raw, cell-level feature data 
       xtreat <- loadTreatment(xmeta, plate.dir, w, type)
-   
+     
       # Generate KS statistics, dropping na values 
       out.raw <- lapply(xtreat, wellKS, xcontrol=xcontrol)
-
+      
       # Format data for return with well and plate ids
       out <- rbindlist(out.raw)
-      colnames(out) <- c(colnames(xcontrol), 'Ncells')
-      id <- names(xtreat)
+      
+      if (n.bs > 0) {
+          xtreat.bs <- loadTreatment(xmeta, plate.dir, w, type, n.bs)
+          out.bs <- lapply(xtreat.bs, wellKS, xcontrol=xcontrol)
+          out.bs <- rbindlist(out.bs)
+          
+          out <- mutate(out, Bootstrap=FALSE)
+          out.bs <- mutate(out.bs, Bootstrap=TRUE)
+          out <- rbind(out, out.bs)
+          
+          id <- c(names(xtreat), names(xtreat.bs))
+          colnames(out) <- c(colnames(xcontrol), 'Ncells', 'Bootstrap')
+      } else {
+          id <- names(xtreat)
+          colnames(out) <- c(colnames(xcontrol), 'Ncells')
+      }
+
       out <- data.frame(ID=id, PlateID=plate, out)
       
       # Write to file for cell line/ compound combination
@@ -97,7 +114,7 @@ loadControl <- function(xmeta, plate.dir, control.variable, controls,
   return(wells)
 }
 
-loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature') {
+loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature', n.bs=0) {
   # Load in raw image features for specified well on given plate
 
   # Check that metadata has been filtered to specific plate
@@ -108,13 +125,13 @@ loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature') {
   xmeta <- filter(xmeta, WellID %in% well.id)
     
   # Load in selected wellsand format for return
-  wells <- loadWells(xmeta, plate.dir, type)
+  wells <- loadWells(xmeta, plate.dir, type, n.bs=n.bs)
   wells <- unlist(wells, recursive=FALSE) 
   return(wells)
 }
 
 
-loadWells <- function(xmeta, plate.dir, type='cbfeature', n.core=1) {
+loadWells <- function(xmeta, plate.dir, type='cbfeature', n.bs=0, n.core=1) {
   # Wrapper function to load data from multiple wells based on filtered metadata
 
   # Check that metadata has been filtered to specific plate
@@ -122,17 +139,18 @@ loadWells <- function(xmeta, plate.dir, type='cbfeature', n.core=1) {
   if (length(plate) > 1) stop('Multiple plates')
 
   # Get plate directory based on filtered metadata
-  plates <- list.dirs(plate.dir, recursive=FALSE)
-  plates <- plates[str_detect(plates, plate)]
+  plate.path <- list.dirs(plate.dir, recursive=FALSE)
+  plate.path <- plate.path[str_detect(plate.path, plate)]
 
   if (type == 'cbfeature') {
-    feature.dir <- str_c(plates, '/features/cbfeatures/')
+    feature.dir <- str_c(plate.path, '/features/cbfeatures/')
     ext <- '.mat'
     well.id <- str_c(xmeta$RowID, xmeta$ColID, sep='-')
     well.files <- str_c('cbfeatures-', well.id, ext)
     
     wells <- mclapply(well.files, loadWellMat, 
-                      feature.dir=feature.dir, 
+                      feature.dir=feature.dir,
+                      n.bs=n.bs, 
                       mc.cores=n.core)
     wells <- cleanListNull(wells)
   } else {
@@ -158,7 +176,7 @@ loadWells <- function(xmeta, plate.dir, type='cbfeature', n.core=1) {
 } 
 
 
-loadWellMat <- function(feature.dir, well.file) {
+loadWellMat <- function(feature.dir, well.file, n.bs=0) {
   # Function to load data from a selected well 
   
   tryCatch({  
@@ -180,8 +198,18 @@ loadWellMat <- function(feature.dir, well.file) {
     # Subset to feature data
     x <- matrix(x[,id.feat], ncol=length(id.feat)) 
     colnames(x) <- x.featnames[id.feat]
-    x <- list(data.table(x))
-    names(x) <- well.id
+    x <- data.table(x)
+
+    # Bootstrap sample cells from each well
+    if (n.bs > 0) {
+        bsid <- bsSample(nrow(x), n.bs)
+        x <- lapply(bsid, function(i) x[i,])
+        names(x) <- rep(well.id, n.bs)
+    } else {
+        x <- list(x)
+        names(x) <- well.id
+    }
+    
     return(x)
   }, error=function(e) {
     warning(str_c('Error loading well: ', well.file, 
@@ -228,11 +256,6 @@ signedKS <- function(x, y, min.n=5) {
   x <- c(na.omit(x))
   y <- c(na.omit(y))
 
-  #if (length(x) < min.n | length(y) < min.n) {
-  #  warning('Fewer than min.n cells in well, skipping...')  
-  #  return(NA)
-  #}
-
   ks <- ksTest(x, y)
   return(ks)
 }
@@ -260,3 +283,11 @@ cleanListNull <- function(x) {
   x <- x[!id.drop]
   return(x)
 }
+
+bsSample <- function(n, n.bs) {
+  # Take k bootstrap samples of length n
+  genSample <- function() sample(1:n, n, replace=TRUE)
+  id <- replicate(n.bs, genSample(), simplify=FALSE) 
+  return(id)
+}
+

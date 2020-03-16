@@ -13,13 +13,14 @@
 #   the indicated path as a csv.
 META_DIR='./data/metadata/'
 PLATE_DIR='./data/plates/'
-PLATE_ID='2020018002'
-CONTROLS='DMSO'
-CONTROL_VARIABLE='Compound_ID'
+PLATE_ID='2020019002'
+CONTROLS='ALS15,ALS45'
+CONTROL_VARIABLE='CellLine'
 N_CORE=12
-TYPE='operetta'
+TYPE='cbfeature'
 SCRIPT_PATH='./main.R'
-WRITE_DIR='./data/plates/LH_2020018002/agg_profiles/'
+NBOOTSTRAP=5
+WRITE_DIR='./data/plates/MAR_20200115_DensityDilutions_plate_2020019002/agg_profiles'
 
 Rscript $SCRIPT_PATH \
   --META_DIR="$META_DIR" \
@@ -28,5 +29,6 @@ Rscript $SCRIPT_PATH \
   --CONTROLS="$CONTROLS" \
   --CONTROL_VARIABLE="$CONTROL_VARIABLE" \
   --TYPE="$TYPE" \
+  --NBS="$NBOOTSTRAP" \
   --N_CORE="$N_CORE" \
   --WRITE_DIR="$WRITE_DIR"

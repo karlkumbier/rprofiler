@@ -25,7 +25,7 @@ if (length(plates) == 0) {
   stop('No plates found in plate directory')
 }
 
-counts <- colSums(sapply(plate.ids, str_detect, string=plates))
+counts <- colSums(as.matrix(sapply(plate.ids, str_detect, string=plates)))
 if (any(counts > 1) | any(counts == 0)) {
   warning('Missing or non-unique plate ids. Subsetting to unique plates')
   plate.ids <- plate.ids[counts == 1]
@@ -43,6 +43,7 @@ controls <- str_split(controls, ',')
 control.variable <- str_split(args$CONTROL_VARIABLE, '\\|')[[1]]
 control.variable <- str_split(control.variable, ',')
 
+n.bs <- ifelse(is.null(args$NBS), 0, args$NBS)
 n.core <- as.numeric(args$N_CORE)
 type <-  args$TYPE
 if (is.null(n.core)) n.core <- 1
@@ -86,6 +87,7 @@ for (i in 1:length(plate.ids)) {
                   plate.dir=plate.dir, 
                   controls=controls,
                   control.variable=control.variable,
+                  n.bs=n.bs,
                   n.core=n.core,
                   type=type)
   }, error=function(e) {
