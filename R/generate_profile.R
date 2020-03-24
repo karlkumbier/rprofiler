@@ -49,7 +49,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   well.ids <- unique(xmeta$WellID)
 
   # Load in each well of plate
-  out <- lapply(well.ids, function(w) {
+  out <- mclapply(well.ids, function(w) {
    
     tryCatch({    
       # Load in raw, cell-level feature data 
@@ -86,7 +86,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       warning(str_c('Error processing well: ', w, '. Skipping well')) 
       return(NULL)
     })
-  })
+  }, mc.cores=n.core)
   
   out <- rbindlist(cleanListNull(out))
   write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
@@ -117,7 +117,8 @@ loadControl <- function(xmeta, plate.dir, control.variable, controls,
   return(wells)
 }
 
-loadTreatment <- function(xmeta, plate.dir, well.id, type='cbfeature', n.bs=0) {
+loadTreatment <- function(xmeta, plate.dir, well.id, 
+                          type='cbfeature', n.bs=0) {
   # Load in raw image features for specified well on given plate
 
   # Check that metadata has been filtered to specific plate
