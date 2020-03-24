@@ -37,10 +37,12 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   # Filter xmeta to current plate
   xmeta <- filter(xmeta, PlateID == plate)
 
+  print('Loading Reference')
   # Load in data for controls to generate KS reference distribution 
   xcontrol <- loadControl(xmeta, plate.dir, control.variable, 
                           controls, type, n.core)
-  
+  print(str_c('N REFERENCE: ', nrow(xcontrol)))
+
   # Set path to write each cell/compound combination
   write.path <- str_c(plate.dir, '/', plate, '/ks_profiles/')
   dir.create(write.path, recursive=TRUE, showWarnings=FALSE)
@@ -108,7 +110,8 @@ loadControl <- function(xmeta, plate.dir, control.variable, controls,
   }
 
   # Load in selected wells and format for return
-  wells <- loadWells(xmeta, plate.dir, type, n.core)
+  print(str_c('Number metadata controls: ', nrow(xmeta)))
+  wells <- loadWells(xmeta, plate.dir, type, n.core=n.core)
   wells <- unlist(wells, recursive=FALSE)
   wells <- rbindlist(wells)
   return(wells)
