@@ -26,7 +26,7 @@ loadMeta <- function(meta.file) {
   workbook.info <- read_excel(meta.file, col_names=FALSE, skip=8, n_max=2)
   sheets <- unname(unlist(workbook.info[1, -1]))
   if (!'UsedWells' %in% sheets) stop('Specify UsedWells')
-  markers <- str_split(unlist(workbook.info[2, 2]), ', ')[[1]]
+  markers <- str_split(unlist(workbook.info[2, 2]), ', *')[[1]]
 
   # Read sheets of plate metadata
   workbook <- lapply(sheets, read_excel, path=meta.file, 

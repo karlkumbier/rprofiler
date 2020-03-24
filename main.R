@@ -80,7 +80,7 @@ for (i in 1:length(plate.ids)) {
   plate <- plates[str_detect(plates, plate.ids[i])]
   meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
   write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
-  
+ 
   # Generate KS profiles for plate
   generateProfile(plate, 
                   xmeta=xmeta, 
