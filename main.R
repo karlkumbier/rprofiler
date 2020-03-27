@@ -43,8 +43,9 @@ controls <- str_split(controls, ',')
 control.variable <- str_split(args$CONTROL_VARIABLE, '\\|')[[1]]
 control.variable <- str_split(control.variable, ',')
 
-n.bs <- ifelse(is.null(args$NBS), 0, args$NBS)
+n.bs <- as.numeric(ifelse(is.null(args$NBS), 0, args$NBS))
 n.core <- as.numeric(args$N_CORE)
+print(n.core)
 type <-  args$TYPE
 if (is.null(n.core)) n.core <- 1
 
