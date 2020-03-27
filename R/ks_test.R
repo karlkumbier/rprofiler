@@ -4,11 +4,11 @@
 ksTest <- function (x, y) {
     x <- x[!is.na(x)]
     n.x <- length(x)
-    if (n.x < 1L) stop("not enough 'x' data")
+    if (n.x < 1L) return(NA) 
         
     y <- y[!is.na(y)]
     n.y <- length(y)
-    if (n.y < 1L) stop("not enough 'y' data")
+    if (n.y < 1L) return(NA) 
     
     w <- c(x, y)
     z <- cumsum(ifelse(order(w) <= n.x, 1 / n.x, -1 / n.y))

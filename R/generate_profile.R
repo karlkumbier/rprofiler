@@ -84,6 +84,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
     
     }, error=function(e) {
       warning(str_c('Error processing well: ', w, '. Skipping well'))
+      print(w)
       print(e) 
       return(NULL)
     })
