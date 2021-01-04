@@ -241,7 +241,10 @@ loadWellOp <- function(x, row, col, feature.id) {
   })
 }
 
-
+#' Evaluate KS given well level and control matrices
+#'
+#' @export
+#'
 wellKS <- function(xwell, xcontrol, id.feat=NULL) {
   # Generate KS statistics for indicated features.
 

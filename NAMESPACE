@@ -3,6 +3,7 @@
 export(aggregate_profiles)
 export(generateProfile)
 export(loadMeta)
+export(wellKS)
 importFrom(R.matlab,readMat)
 importFrom(data.table,data.table)
 importFrom(data.table,fread)
