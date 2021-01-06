@@ -19,4 +19,4 @@ LinkingTo:
 Author: Karl Kumbier
 Description: Generates KS profiles from image features 
 Maintainer: Karl Kumbier <kkumbier@berkeley.edu>
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.1
