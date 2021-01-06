@@ -1,7 +1,18 @@
-# This functions is a modified version of the R-base function ks.test. It
-# computes a signed KS statistic measuring the maximum difference between a
-# distribution x and some reference distribution y.
+#' Signed KS test
+#' This functions is a modified version of the R-base function ks.test. It
+#' computes a signed KS statistic measuring the maximum difference between a
+#' distribution x and some reference distribution y.
+#'
+#' @param x (numeric) data from distribution 1
+#' @param y (numeric) data from distribution 2
+#'
+#' @return Signed KS statistic comparing distributions of x and y
+#'
+#' @export
 ksTest <- function (x, y) {
+    #print('MEDIAN TEST')
+    #return(median(y) / median(x))
+
     x <- x[!is.na(x)]
     n.x <- length(x)
     if (n.x < 1L) return(NA) 

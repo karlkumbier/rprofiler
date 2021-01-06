@@ -14,7 +14,7 @@
 #' @export
 #'
 #' @importFrom stringr str_c str_detect
-#' @importFrom data.table fread
+#' @importFrom data.table fread rbindlist
 aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
   
   # Check for valid profile files in each plate directory
@@ -55,4 +55,44 @@ aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
     write.csv(file=profile.path, profiles, row.names=FALSE, quote=FALSE)
     write.csv(file=meta.path, meta, row.names=FALSE, quote=FALSE)
   }
+}
+
+#' Aggregate feature descriptors
+#' 
+#' Function to load in and aggregate profiles generated for multiple plates.
+#'
+#' @param plates (character) identifiers of the plates whose ks profiles will be
+#'   loaded and aggregated.
+#' @param plate.dir (character) path to plate directory, containing the plate
+#'   directory with image features for the selected plate.
+#' @param write.path (character) path to write aggregated ks profiles to.
+#'
+#' @return None. Will save a csv file containing KS profiles for all selected
+#'   plates.
+#'
+#' @export
+#'
+#' @importFrom stringr str_c str_detect
+#' @importFrom data.table fread rbindlist
+aggregate_features <- function(plate.ids, plate.dir, write.dir) {
+
+    # Check for valid feature files in each plate directory
+    plates <- list.files(plate.dir)
+    plates.select <- lapply(plate.ids, function(z) plates[str_detect(plates, z)])
+    id.drop <- sapply(plates.select, length) != 1
+    plates.select <- plates.select[!id.drop]
+
+    feature.paths <- str_c(plate.dir, '/', plates.select, '/feature_descriptors.csv')
+    id.exist <- sapply(feature.paths, file.exists)
+
+    if (all(id.exist)) {
+        out <- rbindlist(lapply(feature.paths, fread))
+        feature.path <- str_c(write.dir, '/feature_descriptors.csv')
+        write.csv(file=feature.path, out, row.names=FALSE, quote=FALSE)
+
+    } else {
+        stop(str_c('Missing feature files for plate: ', feature.paths[!id.exist]))
+    }
+
+    return(out)
 }

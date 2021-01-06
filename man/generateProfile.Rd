@@ -11,6 +11,7 @@ generateProfile(
   control.variable,
   controls,
   type = "cbfeature",
+  n.bs = 0,
   n.core = 1
 )
 }

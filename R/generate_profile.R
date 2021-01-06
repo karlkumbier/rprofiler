@@ -26,6 +26,7 @@
 #' @importFrom parallel mclapply mcmapply
 #' @importFrom R.matlab readMat
 generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
+                            aggregate='well',
                             type='cbfeature',
                             n.bs=0,
                             n.core=1) {
@@ -38,10 +39,15 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   xmeta <- filter(xmeta, PlateID == plate)
 
   print('Loading Reference')
-  # Load in data for controls to generate KS reference distribution 
-  xcontrol <- loadControl(xmeta, plate.dir, control.variable, 
-                          controls, type, n.core)
-  print(str_c('N REFERENCE: ', nrow(xcontrol)))
+  if (aggregate == 'well') {
+    # Load in data for controls to generate KS reference distribution 
+    xcontrol <- loadControl(xmeta, plate.dir, control.variable, 
+                            controls, type, n.core)
+    print(str_c('N REFERENCE: ', nrow(xcontrol)))
+  }
+
+  print(aggregate)
+  print(n.core)
 
   # Set path to write each cell/compound combination
   write.path <- str_c(plate.dir, '/', plate, '/ks_profiles/')
@@ -50,11 +56,17 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
 
   # Load in each well of plate
   out <- mclapply(well.ids, function(w) {
-   
+    cat(str_c('Well ' , w, '...\n'))
+    
     tryCatch({    
       # Load in raw, cell-level feature data 
       xtreat <- loadTreatment(xmeta, plate.dir, w, type)
-     
+      if (aggregate != 'well') {
+        out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>%
+            sample_n(100)
+        return(out)
+      }
+      
       # Generate KS statistics, dropping na values 
       out.raw <- lapply(xtreat, wellKS, xcontrol=xcontrol)
       
@@ -89,8 +101,16 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       return(NULL)
     })
   }, mc.cores=n.core)
-  
-  out <- rbindlist(cleanListNull(out))
+
+  print('Wells loaded')
+  print(str_c(object.size(out) / 1e6, 'Mb'))
+
+  if (aggregate == 'well') {
+      out <- rbindlist(cleanListNull(out))
+  } else {
+      out <- rbindlist(out)
+  }
+
   write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
             row.names=FALSE, quote=FALSE)
 }
@@ -248,7 +268,7 @@ wellKS <- function(xwell, xcontrol, id.feat=NULL) {
   xwell <- as.data.frame(xwell)
   xcontrol <- as.data.frame(xcontrol)
   if (is.null(id.feat)) id.feat <- 1:ncol(xcontrol)
-  out <- sapply(id.feat, function(i) signedKS(xwell[,i], xcontrol[,i]))
+  out <- sapply(id.feat, function(i) signedKS(xcontrol[,i], xwell[,i]))
 
   n <- nrow(xwell)
   out <- data.frame(matrix(out, nrow=1)) %>% mutate(NCells=n)

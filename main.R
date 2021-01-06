@@ -81,7 +81,12 @@ for (i in 1:length(plate.ids)) {
   plate <- plates[str_detect(plates, plate.ids[i])]
   meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
   write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
- 
+
+  # Load in feature descriptions from plate
+  xfeat <- loadFeature(str_c(plate.dir, '/', plate, '/'))
+  feature.output <- str_c(plate.dir, '/', plate, '/feature_descriptors.csv')
+  write.csv(file=feature.output, xfeat, quote=FALSE, row.names=FALSE)
+
   # Generate KS profiles for plate
   generateProfile(plate, 
                   xmeta=xmeta, 
@@ -89,6 +94,7 @@ for (i in 1:length(plate.ids)) {
                   controls=controls,
                   control.variable=control.variable,
                   n.bs=n.bs,
+                  aggregate='none',
                   n.core=n.core,
                   type=type)
   }, error=function(e) {
@@ -100,6 +106,7 @@ for (i in 1:length(plate.ids)) {
 # Aggregate profiles if processing multiple plates
 if (!is.null(write.dir)) {
   aggregate_profiles(plate.ids, plate.dir, write.dir, type)
+  aggregate_features(plate.ids, plate.dir, write.dir)
 }
 
 print('PROFILES DONE!!!')
