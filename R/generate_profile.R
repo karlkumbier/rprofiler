@@ -7,14 +7,15 @@
 #' @param xmeta (data.table) well-level metadata as returned by loadMeta.
 #' @param plate.dir (character) path to plate directory, containing the plate
 #'   directory with image features for the selected plate.
-#' @param control.cl (character) cell lines to use as KS reference population.
-#' @param control.cpd (character) compound to use as KS reference
-#'   population.
-#' @param control.usg (character) cell line usage to set as KS reference
-#'   population.
-#' @param n.core (int) number of cores to parallelize over.
+#' @param control.variable (character) features to use for KS control
+#' @param controls (character) values to use for each KS control feature
+#' @param aggregate (character) one of 'well' or 'cell'. If 'well' profiles will
+#'  be aggregated by well, else cell-level profiles will be returned.
+#' @param ncell (numeric) number of cells to sample if not well aggregating
 #' @param type (character) type of features to use for KS profile generation
 #'   (one of: cbfeature, operetta)
+#' @param cell.line (character) which cell line to filter to for KS profiles.
+#' @param n.core (int) number of cores to parallelize over.
 #'
 #' @return None. Writes KS profiles to plate directory.
 #'
@@ -28,15 +29,22 @@
 generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
                             aggregate='well',
                             type='cbfeature',
+                            ncell=100,
                             n.bs=0,
-                            n.core=1) {
+                            cell.line=NULL,
+                            n.core=1,
+                            write=TRUE) {
   
   # Check for valid input
   if (!type %in% c('cbfeature', 'operetta'))
     stop('type must be one of cbfeature or operetta')
 
-  # Filter xmeta to current plate
-  xmeta <- filter(xmeta, PlateID == plate)
+  # Filter xmeta to current plate/cell line
+  if (is.null(cell.line)) {
+      xmeta <- filter(xmeta, PlateID == plate)
+  } else {
+      xmeta <- filter(xmeta, PlateID == plate, CellLine == cell.line)
+  }
 
   print('Loading Reference')
   if (aggregate == 'well') {
@@ -61,9 +69,10 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
     tryCatch({    
       # Load in raw, cell-level feature data 
       xtreat <- loadTreatment(xmeta, plate.dir, w, type)
+      
+      # Return cell level data if not generating ks profiles
       if (aggregate != 'well') {
-        out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>%
-            sample_n(100)
+        out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>% sample_n(ncell)
         return(out)
       }
       
@@ -111,8 +120,13 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       out <- rbindlist(out)
   }
 
-  write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
-            row.names=FALSE, quote=FALSE)
+  if (write) {
+    write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
+              row.names=FALSE, quote=FALSE)
+  } else {
+    return(out)
+  }
+
 }
 
 
@@ -211,19 +225,20 @@ loadWellMat <- function(feature.dir, well.file, n.bs=0) {
     xmat <- readMat(str_c(feature.dir, '/', well.file))
     x <- xmat$features['data',,][[1]]
 
-    # Get chanel and category metadata for each feature
+    # Initialize vector of feature names and indices
     x.featnames <- unlist(xmat$features['name',,])
     id.feat <- 3:length(x.featnames)
 
-    # Add channel id for unique feature name
+    # Merge feature name with channel, providing unique feature id
     chan.id <- lapply(xmat$features['channel.id',,][[1]], unlist)
     chan.id <- sapply(chan.id, str_c, collapse='')
-    x.featnames[id.feat] <- str_c('X', x.featnames[id.feat], 
-                                  chan.id[id.feat], sep='..')
     
-    # Subset to feature data
-    x <- matrix(x[,id.feat], ncol=length(id.feat)) 
-    colnames(x) <- x.featnames[id.feat]
+    # Add `X..` indicator for features#
+    x.featnames[id.feat] <- str_c('X..', x.featnames[id.feat]) %>%
+        str_c(chan.id[id.feat], sep='..')
+    
+    # Subset to feature data 
+    colnames(x) <- x.featnames
     x <- data.table(x)
 
     # Bootstrap sample cells from each well
@@ -264,13 +279,12 @@ loadWellOp <- function(x, row, col, feature.id) {
 #' Evaluate KS given well level and control matrices
 #'
 #' @export
-#'
 wellKS <- function(xwell, xcontrol, id.feat=NULL) {
   # Generate KS statistics for indicated features.
 
   xwell <- as.data.frame(xwell)
   xcontrol <- as.data.frame(xcontrol)
-  if (is.null(id.feat)) id.feat <- 1:ncol(xcontrol)
+  if (is.null(id.feat)) which(str_detect(xwell, '^X'))
   out <- sapply(id.feat, function(i) signedKS(xcontrol[,i], xwell[,i]))
 
   n <- nrow(xwell)
