@@ -49,8 +49,13 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
   print('Loading Reference')
   if (aggregate == 'well') {
     # Load in data for controls to generate KS reference distribution 
-    xcontrol <- loadControl(xmeta, plate.dir, control.variable, 
-                            controls, type, n.core)
+    xcontrol <- loadControl(xmeta, 
+                            plate.dir, 
+                            control.variable, 
+                            controls, 
+                            type, 
+                            n.core)
+
     print(str_c('N REFERENCE: ', nrow(xcontrol)))
   }
 
@@ -72,12 +77,14 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       
       # Return cell level data if not generating ks profiles
       if (aggregate != 'well') {
+        ncell <- min(ncell, nrow(xtreat[[1]]))
         out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>% sample_n(ncell)
         return(out)
       }
       
-      # Generate KS statistics, dropping na values 
-      out.raw <- lapply(xtreat, wellKS, xcontrol=xcontrol)
+      # Generate KS statistics, dropping na values
+      id.feat <- which(str_detect(colnames(xcontrol), '^X')) 
+      out.raw <- lapply(xtreat, wellKS, xcontrol=xcontrol, id.feat=id.feat)
       
       # Format data for return with well and plate ids
       out <- rbindlist(out.raw)
@@ -95,7 +102,7 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
           colnames(out) <- c(colnames(xcontrol), 'Ncells', 'Bootstrap')
       } else {
           id <- names(xtreat)
-          colnames(out) <- c(colnames(xcontrol), 'Ncells')
+          colnames(out)[1:length(id.feat)] <- colnames(xcontrol)[id.feat]
       }
 
       out <- data.frame(ID=id, PlateID=plate, out)
@@ -284,7 +291,7 @@ wellKS <- function(xwell, xcontrol, id.feat=NULL) {
 
   xwell <- as.data.frame(xwell)
   xcontrol <- as.data.frame(xcontrol)
-  if (is.null(id.feat)) which(str_detect(xwell, '^X'))
+  if (is.null(id.feat)) id.feat <- which(str_detect(colnames(xwell), '^X'))
   out <- sapply(id.feat, function(i) signedKS(xcontrol[,i], xwell[,i]))
 
   n <- nrow(xwell)
