@@ -25,12 +25,24 @@ loadMeta <- function(meta.file) {
   # Read in info sheet to determine meta data pages
   workbook.info <- read_excel(meta.file, col_names=FALSE, skip=8, n_max=2)
   sheets <- unname(unlist(workbook.info[1, -1]))
+
   if (!'UsedWells' %in% sheets) stop('Specify UsedWells')
   markers <- str_split(unlist(workbook.info[2, 2]), ', *')[[1]]
 
   # Read sheets of plate metadata
-  workbook <- lapply(sheets, read_excel, path=meta.file, 
-                     trim_ws=TRUE, range='B1:Y17')
+  workbook <- lapply(sheets, function(s) {
+                       tryCatch({
+                         read_excel(s, path=meta.file, trim_ws=TRUE, range='B1:Y17')
+                       }, error=function(e) {
+                         print(str_c('Missing sheet: ', s))
+                         return(NULL)
+                       })
+  })
+
+  # Drop missing sheets
+  id.drop <- sapply(sheets, is.null)
+  workbook <- workbook[!id.drop]
+  sheets <- sheets[!id.drop]
 
   # Drop empty sheets
   id.drop <- sapply(workbook, function(z) mean(is.na(z)) == 1)
