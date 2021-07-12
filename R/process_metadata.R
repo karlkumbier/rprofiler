@@ -40,7 +40,7 @@ loadMeta <- function(meta.file) {
   })
 
   # Drop missing sheets
-  id.drop <- sapply(sheets, is.null)
+  id.drop <- sapply(workbook, is.null)
   workbook <- workbook[!id.drop]
   sheets <- sheets[!id.drop]
 
