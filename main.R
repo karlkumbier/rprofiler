@@ -31,6 +31,11 @@ if (any(counts > 1) | any(counts == 0)) {
   plate.ids <- plate.ids[counts == 1]
 }
 
+# Determine aggregate type: cell or well
+aggregate <- args$AGGREGATE
+ncell <- as.numeric(ifelse(is.null(args$NCELL), 100, args$NCELL))
+print(ncell)
+
 # Format controls for profile generation
 if (is.null(args$CONTROLS))
   stop('Specify KS controls')
@@ -66,38 +71,52 @@ if (is.null(type))
 ###############################################################################
 # Iterate over all plates, generating metadata files and profiles
 ###############################################################################
-meta.files <- str_c(meta.dir, '/', plate.ids, '.xlsx')
+if (args$PARSE_ID) {
+    plate.map.ids <- sapply(str_split(plate.ids, '_'), function(z) tail(z, 1))
+} else {
+    plate.map.ids <- plate.ids
+}
+
+meta.files <- str_c(meta.dir, '/', plate.map.ids, '.xlsx')
+
 for (i in 1:length(plate.ids)) {
   tryCatch({
-  plate <- plates[str_detect(plates, plate.ids[i])]
+      plate <- plates[str_detect(plates, plate.ids[i])]
 
-  print(str_c('Processing plate: ', plate.ids[i]))
-  # Load in metadata for each plate
-  xmeta <- loadMeta(meta.files[i]) %>% 
-    mutate(PlateID=plate) %>%
-    mutate(ID=str_c(PlateID, '_', WellID))
+      print(str_c('Processing plate: ', plate.ids[i]))
 
-  # Clean marker set names for output csv
-  plate <- plates[str_detect(plates, plate.ids[i])]
-  meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
-  write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
+      # Load in metadata for each plate
+      xmeta <- loadMeta(meta.files[i]) %>% 
+        mutate(PlateID=plate) %>%
+        mutate(ID=str_c(PlateID, '_', WellID))  
 
-  # Load in feature descriptions from plate
-  xfeat <- loadFeature(str_c(plate.dir, '/', plate, '/'))
-  feature.output <- str_c(plate.dir, '/', plate, '/feature_descriptors.csv')
-  write.csv(file=feature.output, xfeat, quote=FALSE, row.names=FALSE)
+      # Clean marker set names for output csv
+      plate <- plates[str_detect(plates, plate.ids[i])]
+      meta.output <- str_c(plate.dir, '/', plate, '/metadata.csv')
+      write.csv(file=meta.output, xmeta, quote=FALSE, row.names=FALSE)
+      print('Metadata loaded')
 
-  # Generate KS profiles for plate
-  generateProfile(plate, 
-                  xmeta=xmeta, 
-                  plate.dir=plate.dir, 
-                  controls=controls,
-                  control.variable=control.variable,
-                  n.bs=n.bs,
-                  aggregate='none',
-                  n.core=n.core,
-                  type=type)
+      # Load in feature descriptions from plate
+      xfeat <- loadFeature(str_c(plate.dir, '/', plate, '/'))
+      feature.output <- str_c(plate.dir, '/', plate, '/feature_descriptors.csv')
+      write.csv(file=feature.output, xfeat, quote=FALSE, row.names=FALSE)
+      print('Features loaded')
+
+      # Generate KS profiles for plate
+      generateProfile(plate, 
+                      xmeta=xmeta, 
+                      plate.dir=plate.dir, 
+                      controls=controls,
+                      control.variable=control.variable,
+                      n.bs=n.bs,
+                      aggregate=aggregate,
+                      ncell=ncell,
+                      n.core=n.core,
+                      type=type)
+      print('profiles loaded')
+
   }, error=function(e) {
+    traceback()
     print(str_c('Error processing plate ', plate.ids[i]))
     print(e)
   })
@@ -105,7 +124,7 @@ for (i in 1:length(plate.ids)) {
 
 # Aggregate profiles if processing multiple plates
 if (!is.null(write.dir)) {
-  aggregate_profiles(plate.ids, plate.dir, write.dir, type)
+  aggregate_profiles(plate.ids, plate.dir, write.dir, type, aggregate)
   aggregate_features(plate.ids, plate.dir, write.dir)
 }
 

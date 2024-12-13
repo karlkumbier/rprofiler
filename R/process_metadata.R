@@ -51,9 +51,10 @@ loadMeta <- function(meta.file) {
 
   # Extract metadata from each sheet
   id.used <- which(sheets == 'UsedWells')
-  n.row <- sum(rowMeans(is.na(workbook[[id.used]])) != 1)
-  n.col <- sum(colMeans(is.na(workbook[[id.used]])) != 1)
+  n.row <- nrow(workbook[[id.used]]) #sum(rowMeans(is.na(workbook[[id.used]])) != 1)
+  n.col <- ncol(workbook[[id.used]]) #sum(colMeans(is.na(workbook[[id.used]])) != 1)
   xmeta <- sapply(workbook, wellMeta)
+
   col.id <- rep(1:n.col, each=n.row)
   row.id <- rep(1:n.row, times=n.col)
 

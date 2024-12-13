@@ -26,13 +26,17 @@
 #' @importFrom dplyr filter mutate select
 #' @importFrom parallel mclapply mcmapply
 #' @importFrom R.matlab readMat
-generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
+generateProfile <- function(plate, xmeta, plate.dir, 
+                            control.variable=NULL, 
+                            controls=NULL,
                             aggregate='well',
                             type='cbfeature',
-                            ncell=100,
+                            ncell=250,
                             n.bs=0,
                             cell.line=NULL,
                             n.core=1,
+                            dna.thresh=c(0.1, 0.9),
+                            cell.thresh=c(0.1, 0.9),
                             write=TRUE) {
   
   # Check for valid input
@@ -77,8 +81,16 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       
       # Return cell level data if not generating ks profiles
       if (aggregate != 'well') {
-        ncell <- min(ncell, nrow(xtreat[[1]]))
-        out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>% sample_n(ncell)
+        out <- mutate(xtreat[[1]], ID=w, PlateID=plate) %>% 
+            mutate(DNA_Min=quantile(X..area_of_dna_region..0, dna.thresh[1])) %>%
+            mutate(DNA_Max=quantile(X..area_of_dna_region..0, dna.thresh[2])) %>%
+            mutate(Cell_Min=quantile(X..area_of_cell_region..0, cell.thresh[1])) %>%
+            mutate(Cell_Max=quantile(X..area_of_cell_region..0, cell.thresh[2])) %>%
+            filter(X..area_of_dna_region..0 >= DNA_Min, X..area_of_dna_region..0 <= DNA_Max) %>%
+            filter(X..area_of_cell_region..0 >= Cell_Min, X..area_of_cell_region..0 <= Cell_Max)
+        
+        nsample <- min(c(ncell, nrow(out)))
+        out <- sample_n(out, nsample)
         return(out)
       }
       
@@ -125,11 +137,15 @@ generateProfile <- function(plate, xmeta, plate.dir, control.variable, controls,
       out <- rbindlist(cleanListNull(out))
   } else {
       out <- rbindlist(out)
+      id.count <- table(out$ID)
+      print(str_c('Plate: ', plate))
+      print(range(id.count))
+      print('--------------------------------------------')
   }
 
   if (write) {
-    write.csv(file=str_c(write.path, type, '_profiles.csv'), out, 
-              row.names=FALSE, quote=FALSE)
+    fout <- str_c(write.path, type, '_', aggregate, '_profiles.csv')
+    write.csv(file=fout, out, row.names=FALSE)
   } else {
     return(out)
   }

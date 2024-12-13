@@ -15,7 +15,7 @@
 #'
 #' @importFrom stringr str_c str_detect
 #' @importFrom data.table fread rbindlist
-aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
+aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type, aggregate) {
   
   # Check for valid profile files in each plate directory
   plates <- list.files(plate.dir)
@@ -23,8 +23,9 @@ aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
   id.drop <- sapply(plates.select, length) != 1
   plates.select <- plates.select[!id.drop]
 
+  profile.file <- str_c(type, '_', aggregate, '_profiles.csv')
   profile.paths <- str_c(plate.dir, '/', plates.select, '/', 
-                         'ks_profiles/', type, '_profiles.csv')
+                         'ks_profiles/', type, '_', aggregate, '_profiles.csv')
   meta.paths <- str_c(plate.dir, '/', plates.select, '/metadata.csv')
   
   id.exist.p <- sapply(profile.paths, file.exists)
@@ -42,17 +43,17 @@ aggregate_profiles <- function(plate.ids, plate.dir, write.dir, type) {
   } else {
     
     # Load in profiles for all available plates
-    profile.paths <- profile.paths[id.exist]
-    profiles <- lapply(profile.paths, fread)
-    profiles <- rbindlist(profiles, fill=TRUE)
+    #profile.paths <- profile.paths[id.exist]
+    #profiles <- lapply(profile.paths, fread)
+    #profiles <- rbindlist(profiles, fill=TRUE)
 
     meta <- lapply(meta.paths[id.exist], fread)
     meta <- rbindlist(meta, fill=TRUE)
     
     meta.path <- str_c(write.dir, '/metadata.csv')
-    profile.path <- str_c(write.dir, '/', type, '_profiles.csv')
+    #profile.path <- str_c(write.dir, '/', type, '_profiles.csv')
     dir.create(write.dir, recursive=TRUE, showWarnings=FALSE)
-    write.csv(file=profile.path, profiles, row.names=FALSE, quote=FALSE)
+    #write.csv(file=profile.path, profiles, row.names=FALSE, quote=FALSE)
     write.csv(file=meta.path, meta, row.names=FALSE, quote=FALSE)
   }
 }
